@@ -4,6 +4,7 @@ import aecor.macros.boopickleWireProtocol
 import cats.data.NonEmptyList
 import cats.tagless.autoFunctorK
 import ru.pavkin.booking.common.models._
+import boopickle.Default._
 
 @autoFunctorK(false)
 @boopickleWireProtocol
@@ -18,3 +19,5 @@ trait Booking[F[_]] {
   def status: F[Option[BookingStatus]]
   def tickets: F[Option[NonEmptyList[Ticket]]]
 }
+
+object Booking

@@ -1,14 +1,11 @@
 package ru.pavkin.booking.booking.entity
 
-import java.util.UUID
-
+import aecor.MonadActionReject
 import aecor.data._
 import aecor.encoding.{KeyDecoder, KeyEncoder}
-import aecor.{MonadAction, MonadActionReject}
 import cats.Monad
 import cats.data.EitherT._
 import cats.data.NonEmptyList
-import cats.effect.IO
 import cats.syntax.all._
 import ru.pavkin.booking.common.models.BookingStatus._
 import ru.pavkin.booking.common.models._
@@ -76,15 +73,9 @@ class EventsourcedBooking[I[_]](
 
 object EventsourcedBooking {
 
-  case class BookingKey(value: UUID) extends AnyVal
+  implicit val keyEncoder: KeyEncoder[BookingKey] = KeyEncoder.encodeKeyString.contramap(_.value)
 
-  implicit val keyEncoder: KeyEncoder[BookingKey] = KeyEncoder.encodeKeyUUID.contramap(_.value)
-
-  implicit val keyDecoder: KeyDecoder[BookingKey] = KeyDecoder.decodeKeyUUID.map(BookingKey)
-
-  implicitly[MonadAction[ActionT[IO, Option[BookingState], BookingEvent, ?],
-                         Option[BookingState],
-                         BookingEvent]]
+  implicit val keyDecoder: KeyDecoder[BookingKey] = KeyDecoder.decodeKeyString.map(BookingKey(_))
 
   def behavior[F[_]: Monad]: EventsourcedBehavior[
     EitherK[Booking, BookingCommandRejection, ?[_]],

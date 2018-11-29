@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package ru.pavkin.booking.common.protobuf.v1;
+option java_package = "ru.pavkin.booking.common.protobuf.msg";
+option optimize_for = SPEED;
+
+option (scalapb.options) = {
+  import: "ru.pavkin.booking.common.protobuf.TypeMappers._"
+  single_file: true
+};
+
+import "scalapb/scalapb.proto";
+
+message Seat {
+    int32 row = 1 [(scalapb.field).type = "ru.pavkin.booking.common.models.Row"];
+    int32 number = 2 [(scalapb.field).type = "ru.pavkin.booking.common.models.SeatNumber"];
+}
+
+message Ticket {
+    Seat seat = 1 [(scalapb.field).type = "ru.pavkin.booking.common.models.Seat", (scalapb.field).no_box = true];
+    string price = 2 [(scalapb.field).type = "ru.pavkin.booking.common.models.Money"];
+}

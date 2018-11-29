@@ -1,24 +1,9 @@
 package ru.pavkin.booking.booking.entity
 
-import java.time.Duration
-
-import boopickle.Default.{compositePickler, _}
-import ru.pavkin.booking.common.models.{ClientId, ConcertId, PaymentId}
+import boopickle.Default._
 import scodec.Codec
 
 object BookingWireCodecs {
-
-  implicit val clientIdPickler: boopickle.Pickler[ClientId] =
-    boopickle.DefaultBasic.UUIDPickler.xmap(ClientId)(_.value)
-
-  implicit val concertIdPickler: boopickle.Pickler[ConcertId] =
-    boopickle.DefaultBasic.UUIDPickler.xmap(ConcertId)(_.value)
-
-  implicit val paymentIdPickler: boopickle.Pickler[PaymentId] =
-    boopickle.DefaultBasic.UUIDPickler.xmap(PaymentId)(_.value)
-
-  implicit val durationPickler: boopickle.Pickler[Duration] =
-    boopickle.DefaultBasic.longPickler.xmap(Duration.ofMillis)(_.toMillis)
 
   implicit val rejectionPickler: boopickle.Pickler[BookingCommandRejection] =
     compositePickler[BookingCommandRejection]
