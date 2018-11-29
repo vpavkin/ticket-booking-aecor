@@ -49,7 +49,7 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
         case _: BookingPlaced => impossible
         // todo: confirmedAt
         case BookingConfirmed(tickets) =>
-          s.copy(tickets = tickets.toList, status = BookingStatus.Confirmed, confirmedAt = null)
+          s.copy(tickets = tickets.toList, status = BookingStatus.Confirmed, confirmedAt = None)
             .some
             .next
         case _: BookingDenied    => s.copy(status = BookingStatus.Denied).some.next

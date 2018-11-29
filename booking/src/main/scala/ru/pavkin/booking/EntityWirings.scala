@@ -11,7 +11,7 @@ import ru.pavkin.booking.common.models.BookingKey
 import ru.pavkin.booking.booking.entity.{Booking, BookingCommandRejection, EventsourcedBooking}
 import ru.pavkin.booking.booking.entity.BookingWireCodecs._
 
-final class EntityWirings[F[_] : Effect](val bookings: Bookings[F]) {}
+final class EntityWirings[F[_] : Effect](val bookings: Bookings[F])
 
 object EntityWirings {
   def apply[F[_] : Effect](

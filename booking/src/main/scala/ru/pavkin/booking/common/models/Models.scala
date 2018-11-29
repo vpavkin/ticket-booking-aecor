@@ -2,9 +2,9 @@ package ru.pavkin.booking.common.models
 
 import cats.Order
 import cats.implicits._
-import cats.kernel.Monoid
+import cats.kernel.{ Eq, Monoid }
 import enumeratum._
-import io.circe.{Decoder, Encoder}
+import io.circe.{ Decoder, Encoder }
 import io.circe.generic.semiauto._
 import ru.pavkin.booking.common.json.AnyValCoders._
 
@@ -22,6 +22,10 @@ object Money {
 case class BookingKey(value: String) extends AnyVal
 
 case class ClientId(value: String) extends AnyVal
+object ClientId {
+  implicit val eqInstance: Eq[ClientId] = Eq.fromUniversalEquals
+}
+
 case class ConcertId(value: String) extends AnyVal
 
 case class Row(num: Int) extends AnyVal
@@ -30,6 +34,8 @@ case class SeatNumber(num: Int) extends AnyVal
 case class Seat(row: Row, number: SeatNumber)
 
 object Seat {
+  def seat(row: Int, number: Int): Seat = Seat(Row(row), SeatNumber(number))
+
   implicit val order: Order[Seat] = Order.by(s => (s.row.num, s.number.num))
   implicit val decoder: Decoder[Seat] = deriveDecoder
   implicit val encoder: Encoder[Seat] = deriveEncoder

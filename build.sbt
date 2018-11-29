@@ -90,6 +90,7 @@ lazy val baseSettings = Seq(
   dockerExposedPorts := Seq(9000),
   dockerBaseImage := "java:8.161",
   publishTo := None,
+  cancelable in Global := true
 )
 
 lazy val commonScalacOptions = Seq(

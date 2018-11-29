@@ -10,17 +10,19 @@ import pureconfig.loadConfigOrThrow
 import ru.pavkin.booking.config.AppConfig
 import ru.pavkin.booking.common.syntax._
 
-class AppF[F[_] : Timer : ContextShift : Par : LiftIO](implicit F: ConcurrentEffect[F]) {
+class AppF[F[_]: Timer: ContextShift: Par: LiftIO](implicit F: ConcurrentEffect[F]) {
 
-  case class Resources(appConfig: AppConfig, system: ActorSystem, postgresWirings: PostgresWirings[F])
+  case class Resources(appConfig: AppConfig,
+                       system: ActorSystem,
+                       postgresWirings: PostgresWirings[F])
 
   def resources: Resource[F, Resources] =
     for {
       config <- F.delay(ConfigFactory.load()).resource
       appConfig <- F.delay(loadConfigOrThrow[AppConfig](config)).resource
       system <- Resource.make(F.delay(ActorSystem(appConfig.cluster.systemName, config)))(
-        s => LiftIO[F].liftIO(IO.fromFuture(IO(s.terminate()))).void
-      )
+                 s => LiftIO[F].liftIO(IO.fromFuture(IO(s.terminate()))).void
+               )
       postgresWirings <- PostgresWirings[F](appConfig)
       _ <- Resource.make(F.unit)(_ => F.delay(println("Releasing application resources")))
     } yield Resources(appConfig, system, postgresWirings)
@@ -30,7 +32,8 @@ class AppF[F[_] : Timer : ContextShift : Par : LiftIO](implicit F: ConcurrentEff
 
     for {
       entityWirings <- EntityWirings[F](system, postgresWirings)
-      processWirings = new ProcessWirings[F](system, postgresWirings)
+      serviceWirings <- ServiceWirings[F]()
+      processWirings = new ProcessWirings[F](system, postgresWirings, serviceWirings, entityWirings)
       endpointWirings = new EndpointWirings[F](appConfig.httpServer, postgresWirings, entityWirings)
       _ <- processWirings.launchProcesses.void
       _ <- endpointWirings.launchHttpService
