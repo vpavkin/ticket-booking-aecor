@@ -20,6 +20,7 @@ message BookingPlaced {
 
 message BookingConfirmed {
     repeated Ticket tickets = 1 [(scalapb.field).type = "ru.pavkin.booking.common.models.Ticket"];
+    int64 expiresAt = 2 [(scalapb.field).type = "Option[java.time.Instant]"];
 }
 message BookingDenied {
     string reason = 1;

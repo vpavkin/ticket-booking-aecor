@@ -1,6 +1,6 @@
 package ru.pavkin.booking.common.protobuf
 
-import java.time.{Duration, Instant}
+import java.time.{ Duration, Instant }
 
 import ru.pavkin.booking.common.models._
 import scalapb.TypeMapper
@@ -10,9 +10,8 @@ import scala.util.Try
 
 trait AnyValTypeMapper {
 
-  implicit def anyValTypeMapper[V, U](
-    implicit ev: V <:< AnyVal,
-    V: Unwrapped.Aux[V, U]): TypeMapper[U, V] = {
+  implicit def anyValTypeMapper[V, U](implicit ev: V <:< AnyVal,
+                                      V: Unwrapped.Aux[V, U]): TypeMapper[U, V] = {
     val _ = ev
     TypeMapper[U, V](V.wrap)(V.unwrap)
   }
@@ -43,6 +42,11 @@ trait BaseTypeMapper {
 
   implicit val instant: TypeMapper[Long, Instant] =
     TypeMapper[Long, Instant](Instant.ofEpochMilli)(_.toEpochMilli)
+
+  implicit val instantOpt: TypeMapper[Long, Option[Instant]] =
+    instant.map2(i => if (i.toEpochMilli == 0) None else Some(i))(
+      _.getOrElse(Instant.ofEpochMilli(0))
+    )
 
   implicit val duration: TypeMapper[String, java.time.Duration] =
     TypeMapper[String, Duration] { s =>

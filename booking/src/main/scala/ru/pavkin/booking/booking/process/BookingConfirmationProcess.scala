@@ -18,7 +18,7 @@ class BookingConfirmationProcess[F[_]: Monad](bookings: Bookings[F],
       .book(key, event.concertId, event.seats)
       .flatMap {
         case Left(error)    => bookings(key).deny(error.toString)
-        case Right(tickets) => bookings(key).confirm(tickets)
+        case Right(c) => bookings(key).confirm(c.tickets, c.expiresAt)
       }
       .flatMap(
         _.fold(

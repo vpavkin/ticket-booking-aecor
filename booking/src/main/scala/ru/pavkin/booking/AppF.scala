@@ -30,11 +30,21 @@ class AppF[F[_]: Timer: ContextShift: Par: LiftIO](implicit F: ConcurrentEffect[
   def launch(r: Resources): F[Unit] = {
     import r._
 
+    val clock = Clock.create[F]
+
     for {
-      entityWirings <- EntityWirings[F](system, postgresWirings)
-      serviceWirings <- ServiceWirings[F]()
-      processWirings = new ProcessWirings[F](system, postgresWirings, serviceWirings, entityWirings)
-      endpointWirings = new EndpointWirings[F](appConfig.httpServer, postgresWirings, entityWirings)
+      entityWirings <- EntityWirings(system, clock, postgresWirings)
+      serviceWirings <- ServiceWirings(clock)
+      kafkaWirings = KafkaWirings[F]
+      processWirings = new ProcessWirings(
+        system,
+        clock,
+        postgresWirings,
+        kafkaWirings,
+        serviceWirings,
+        entityWirings
+      )
+      endpointWirings = new EndpointWirings(appConfig.httpServer, postgresWirings, entityWirings)
       _ <- processWirings.launchProcesses.void
       _ <- endpointWirings.launchHttpService
     } yield ()

@@ -49,6 +49,7 @@ lazy val booking = (project in file("booking"))
       "io.chrisdavenport" %% "log4cats-slf4j" % log4CatsVersion,
       "io.chrisdavenport" %% "cats-par" % "0.2.0",
       "io.monix" %% "monix" % "3.0.0-RC2",
+      "com.ovoenergy" %% "fs2-kafka" % "0.16.4",
       "org.tpolecat" %% "doobie-core" % doobieVersion,
       "org.tpolecat" %% "doobie-postgres" % doobieVersion,
       "org.tpolecat" %% "doobie-hikari" % doobieVersion,
@@ -79,7 +80,11 @@ lazy val booking = (project in file("booking"))
 
 lazy val baseSettings = Seq(
   scalaVersion in ThisBuild := "2.12.7",
-  resolvers ++= Seq(Resolver.sonatypeRepo("releases"), Resolver.sonatypeRepo("snapshots")),
+  resolvers ++= Seq(
+    Resolver.sonatypeRepo("releases"),
+    Resolver.sonatypeRepo("snapshots"),
+    Resolver.bintrayRepo("ovotech", "maven")
+  ),
   scalacOptions in(Compile, console) ~= {
     _.filterNot(unusedWarnings.toSet + "-Ywarn-value-discard")
   },

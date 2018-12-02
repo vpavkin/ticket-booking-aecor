@@ -1,27 +1,26 @@
 package ru.pavkin.booking.booking.entity
 
-import aecor.MonadActionReject
+import java.time.Instant
+import java.util.concurrent.TimeUnit
+
+import aecor.MonadActionLiftReject
 import aecor.data._
-import aecor.encoding.{KeyDecoder, KeyEncoder}
+import aecor.encoding.{ KeyDecoder, KeyEncoder }
 import cats.Monad
 import cats.data.EitherT._
-import cats.data.NonEmptyList
+import cats.data.{ EitherT, NonEmptyList, OptionT }
+import cats.effect.Clock
 import cats.syntax.all._
 import ru.pavkin.booking.common.models.BookingStatus._
 import ru.pavkin.booking.common.models._
 
-class EventsourcedBooking[I[_]](
-  implicit I: MonadActionReject[I, Option[BookingState], BookingEvent, BookingCommandRejection]
+class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
+  implicit I: MonadActionLiftReject[I, F, Option[BookingState], BookingEvent, BookingCommandRejection]
 ) extends Booking[I] {
 
   import I._
 
   val ignore: I[Unit] = unit
-
-  val readStatus: I[BookingStatus] = read.flatMap {
-    case Some(s) => pure(s.status)
-    case _       => reject(BookingNotFound)
-  }
 
   def place(client: ClientId, concert: ConcertId, seats: NonEmptyList[Seat]): I[Unit] =
     read.flatMap {
@@ -32,10 +31,10 @@ class EventsourcedBooking[I[_]](
         else append(BookingPlaced(client, concert, seats))
     }
 
-  def confirm(tickets: NonEmptyList[Ticket]): I[Unit] =
-    readStatus.flatMap {
+  def confirm(tickets: NonEmptyList[Ticket], expiresAt: Option[Instant]): I[Unit] =
+    status.flatMap {
       case AwaitingConfirmation =>
-        append(BookingConfirmed(tickets)) >>
+        append(BookingConfirmed(tickets, expiresAt)) >>
           whenA(tickets.foldMap(_.price).amount <= 0)(append(BookingSettled()))
 
       case Confirmed | Settled => ignore
@@ -44,7 +43,7 @@ class EventsourcedBooking[I[_]](
     }
 
   def deny(reason: String): I[Unit] =
-    readStatus.flatMap {
+    status.flatMap {
       case AwaitingConfirmation =>
         append(BookingDenied(reason))
       case Denied              => ignore
@@ -53,7 +52,7 @@ class EventsourcedBooking[I[_]](
     }
 
   def cancel(reason: String): I[Unit] =
-    readStatus.flatMap {
+    status.flatMap {
       case AwaitingConfirmation | Confirmed =>
         append(BookingCancelled(reason))
       case Canceled | Denied => ignore
@@ -61,13 +60,29 @@ class EventsourcedBooking[I[_]](
     }
 
   def receivePayment(paymentId: PaymentId): I[Unit] =
-    readStatus.flatMap {
+    status.flatMap {
       case AwaitingConfirmation        => reject(BookingIsNotConfirmed)
       case Canceled | Denied | Settled => reject(BookingIsAlreadySettled)
-      case Confirmed                   => append(BookingPaid(paymentId))
+      case Confirmed                   => append(BookingPaid(paymentId), BookingSettled())
     }
 
-  def status: I[Option[BookingStatus]] = read.map(_.map(_.status))
+  def expire: I[Unit] =
+    for {
+      now <- liftF(clock.realTime(TimeUnit.MILLISECONDS)).map(Instant.ofEpochMilli)
+      state <- OptionT(read).getOrElseF(reject(BookingNotFound))
+      _ <- state.status match {
+            case Confirmed if state.expiresAt.exists(now.isAfter) => append(BookingExpired())
+            case Confirmed                                        => reject(TooEarlyToExpire)
+            case Canceled | Denied                                => ignore
+            case Settled                                          => reject(BookingIsAlreadySettled)
+            case AwaitingConfirmation                             => reject(BookingIsNotConfirmed)
+          }
+    } yield ()
+
+  def status: I[BookingStatus] = read.flatMap {
+    case Some(s) => pure(s.status)
+    case _       => reject(BookingNotFound)
+  }
   def tickets: I[Option[NonEmptyList[Ticket]]] = read.map(_.flatMap(_.tickets))
 }
 
@@ -75,23 +90,24 @@ object EventsourcedBooking {
 
   implicit val keyEncoder: KeyEncoder[BookingKey] = KeyEncoder.encodeKeyString.contramap(_.value)
 
-  implicit val keyDecoder: KeyDecoder[BookingKey] = KeyDecoder.decodeKeyString.map(BookingKey(_))
+  implicit val keyDecoder: KeyDecoder[BookingKey] = KeyDecoder.decodeKeyString.map(BookingKey)
 
-  def behavior[F[_]: Monad]: EventsourcedBehavior[
-    EitherK[Booking, BookingCommandRejection, ?[_]],
-    F,
-    Option[BookingState],
-    BookingEvent
-  ] =
+  def behavior[F[_]: Monad](clock: Clock[F]): EventsourcedBehavior[EitherK[
+    Booking,
+    BookingCommandRejection,
+    ?[_]
+  ], F, Option[BookingState], BookingEvent] =
     EventsourcedBehavior
       .optionalRejectable(
-        new EventsourcedBooking(),
+        new EventsourcedBooking[F, EitherT[ActionT[F, Option[BookingState], BookingEvent, ?],
+                                           BookingCommandRejection,
+                                           ?]](clock),
         BookingState.init,
         _.handleEvent(_)
       )
 
   val entityName: String = "Booking"
   val entityTag: EventTag = EventTag(entityName)
-  val tagging: Tagging.Partitioned[BookingKey] = Tagging.partitioned(20)(entityTag)
+  val tagging: Tagging[BookingKey] = Tagging.partitioned(20)(entityTag)
 
 }

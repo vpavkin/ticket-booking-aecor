@@ -1,31 +1,49 @@
 package ru.pavkin.booking.booking.service
 
+import java.time.temporal.ChronoUnit
+import java.time.{ Duration, Instant }
+import java.util.concurrent.TimeUnit
+
+import cats.Monad
 import cats.data.NonEmptyList
-import cats.effect.Sync
+import cats.effect.{ Clock, Sync }
 import cats.effect.concurrent.Ref
 import cats.implicits._
 import ru.pavkin.booking.booking.service.BookingConfirmationService._
 import ru.pavkin.booking.booking.service.StubConfirmationService.ConcertState
 import ru.pavkin.booking.common.models._
 
-class StubConfirmationService[F[_]](state: Ref[F, Map[ConcertId, ConcertState]])
+class StubConfirmationService[F[_]: Monad](clock: Clock[F],
+                                           state: Ref[F, Map[ConcertId, ConcertState]])
     extends BookingConfirmationService[F] {
+
+  val expireAfter: Duration = Duration.of(6, ChronoUnit.HOURS)
+
   def book(bookingId: BookingKey,
            concertId: ConcertId,
-           seats: NonEmptyList[Seat]): F[Either[ConfirmationFailure, NonEmptyList[Ticket]]] =
-    state.modify[Either[ConfirmationFailure, NonEmptyList[Ticket]]](
-      concerts =>
-        concerts.get(concertId) match {
-          case None => concerts -> Left(UnknownSeats)
-          case Some(concertState) =>
-            concertState
-              .book(bookingId, seats)
-              .fold(e => concerts -> Left(e), {
-                case (c, t) => concerts.updated(concertId, c) -> Right(t)
-              })
+           seats: NonEmptyList[Seat]): F[Either[ConfirmationFailure, Confirmation]] =
+    clock
+      .realTime(TimeUnit.MILLISECONDS)
+      .map(Instant.ofEpochMilli)
+      .flatMap(
+        now =>
+          state.modify[Either[ConfirmationFailure, Confirmation]](
+            concerts =>
+              concerts.get(concertId) match {
+                case None => concerts -> Left(UnknownSeats)
+                case Some(concertState) =>
+                  concertState
+                    .book(bookingId, seats)
+                    .fold(e => concerts -> Left(e), {
+                      case (c, t) =>
+                        concerts.updated(concertId, c) -> Right(
+                          Confirmation(t, Some(now.plus(expireAfter)))
+                        )
+                    })
 
-      }
-    )
+            }
+        )
+      )
 
   def release(bookingId: BookingKey): F[Either[ReleaseFailure, Unit]] =
     state.modify[Either[ReleaseFailure, Unit]](
@@ -44,8 +62,9 @@ class StubConfirmationService[F[_]](state: Ref[F, Map[ConcertId, ConcertState]])
 
 object StubConfirmationService {
 
-  def apply[F[_]: Sync](initial: Map[ConcertId, ConcertState]): F[StubConfirmationService[F]] =
-    Ref.of(initial).map(new StubConfirmationService(_))
+  def apply[F[_]: Sync](clock: Clock[F],
+                        initial: Map[ConcertId, ConcertState]): F[StubConfirmationService[F]] =
+    Ref.of(initial).map(new StubConfirmationService(clock, _))
 
   case class ConcertState(prices: Map[Seat, Money],
                           availableSeats: Set[Seat],

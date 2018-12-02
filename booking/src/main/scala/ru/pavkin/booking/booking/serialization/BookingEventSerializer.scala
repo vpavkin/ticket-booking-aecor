@@ -30,8 +30,8 @@ object BookingEventSerializer extends PostgresEventJournal.Serializer[BookingEve
   def serialize(a: BookingEvent): (TypeHint, Array[Byte]) = a match {
     case BookingPlaced(clientId, concertId, seats) =>
       AA.entryName -> msg.BookingPlaced(clientId, concertId, seats.toList).toByteArray
-    case BookingConfirmed(tickets) =>
-      AB.entryName -> msg.BookingConfirmed(tickets.toList).toByteArray
+    case BookingConfirmed(tickets, expiresAt) =>
+      AB.entryName -> msg.BookingConfirmed(tickets.toList, expiresAt).toByteArray
     case BookingDenied(reason) =>
       AC.entryName -> msg.BookingDenied(reason).toByteArray
     case BookingCancelled(reason) =>
@@ -53,7 +53,7 @@ object BookingEventSerializer extends PostgresEventJournal.Serializer[BookingEve
 
       case Hint.AB =>
         val raw = msg.BookingConfirmed.parseFrom(bytes)
-        BookingConfirmed(NonEmptyList.fromListUnsafe(raw.tickets.toList))
+        BookingConfirmed(NonEmptyList.fromListUnsafe(raw.tickets.toList), raw.expiresAt)
 
       case Hint.AC =>
         val raw = msg.BookingDenied.parseFrom(bytes)

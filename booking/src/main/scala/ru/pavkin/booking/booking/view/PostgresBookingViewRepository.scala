@@ -8,25 +8,24 @@ import cats.implicits._
 import doobie._
 import doobie.implicits._
 import doobie.util.transactor.Transactor
-import io.circe.{Decoder, Encoder, Json}
+import io.circe.{ Decoder, Encoder, Json }
 import io.circe.parser._
 import org.postgresql.util.PGobject
 import ru.pavkin.booking.common.models._
 
-class PostgresBookingViewRepository[F[_] : Monad](
-  transactor: Transactor[F],
-  tableName: String = "bookings")
-  extends BookingViewRepository[F] {
+class PostgresBookingViewRepository[F[_]: Monad](transactor: Transactor[F],
+                                                 tableName: String = "bookings")
+    extends BookingViewRepository[F] {
 
   implicit val jsonMeta: Meta[Json] =
     Meta.Advanced
       .other[PGobject]("json")
       .timap[Json](a => parse(a.getValue).leftMap[Json](e => throw e).merge)(a => {
-      val o = new PGobject
-      o.setType("json")
-      o.setValue(a.noSpaces)
-      o
-    })
+        val o = new PGobject
+        o.setType("json")
+        o.setValue(a.noSpaces)
+        o
+      })
 
   implicit val seatsMeta: Meta[List[Seat]] = jsonMeta.timap(
     j => Decoder[List[Seat]].decodeJson(j).right.get
@@ -51,22 +50,32 @@ class PostgresBookingViewRepository[F[_] : Monad](
   def set(view: BookingView): F[Unit] =
     Update[BookingView](setViewQuery).run(view).transact(transactor).void
 
+  def expired(now: Instant): fs2.Stream[F, BookingKey] =
+    queryExpired(now).stream.transact(transactor)
+
   def createTable: F[Unit] = createTableQuery.transact(transactor).void
 
   private val setViewQuery =
     s"""INSERT INTO $tableName
-    (booking_id, client_id, concert_id, seats, tickets, status, confirmed_at, version)
-    VALUES (?,?,?,?,?,?,?,?)
+    (booking_id, client_id, concert_id, seats, tickets, status, confirmed_at, expires_at, version)
+    VALUES (?,?,?,?,?,?,?,?,?)
     ON CONFLICT (booking_id)
     DO UPDATE SET
      tickets = EXCLUDED.tickets,
      status = EXCLUDED.status,
+     confirmed_at = EXCLUDED.confirmed_at,
+     expires_at = EXCLUDED.expires_at,
      version = EXCLUDED.version;"""
 
   private def queryView(bookingId: BookingKey) =
     (fr"SELECT * FROM " ++ Fragment.const(tableName) ++
       fr"WHERE booking_id = $bookingId;")
       .query[BookingView]
+
+  private def queryExpired(now: Instant) =
+    (fr"SELECT booking_id FROM " ++ Fragment.const(tableName) ++
+      fr"WHERE status = ${BookingStatus.Confirmed: BookingStatus} AND expires_at < $now;")
+      .query[BookingKey]
 
   private def queryForClient(clientId: ClientId) =
     (fr"SELECT * FROM " ++ Fragment.const(tableName) ++
@@ -82,7 +91,8 @@ class PostgresBookingViewRepository[F[_] : Monad](
     seats         json      NOT NULL,
     tickets       json      NOT NULL,
     status        text      NOT NULL,
-    confirmed_at  timestamp,
+    confirmed_at  timestamptz,
+    expires_at    timestamptz,
     version       bigint    NOT NULL
     );
   """).update.run

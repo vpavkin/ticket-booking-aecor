@@ -1,6 +1,6 @@
 package ru.pavkin.booking.booking.view
 
-import aecor.data.{EntityEvent, Folded}
+import aecor.data.{ EntityEvent, Folded }
 import Folded.syntax._
 import cats.Functor
 import cats.implicits._
@@ -38,6 +38,7 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
               Nil,
               BookingStatus.AwaitingConfirmation,
               None,
+              None,
               Projection.initialVersion.value
             )
           ).next
@@ -47,16 +48,21 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
     case Some(s) =>
       event.payload match {
         case _: BookingPlaced => impossible
-        // todo: confirmedAt
-        case BookingConfirmed(tickets) =>
-          s.copy(tickets = tickets.toList, status = BookingStatus.Confirmed, confirmedAt = None)
+        // todo: confirmedAt from metadata
+        case BookingConfirmed(tickets, expiresAt) =>
+          s.copy(
+              tickets = tickets.toList,
+              status = BookingStatus.Confirmed,
+              confirmedAt = None,
+              expiresAt = expiresAt
+            )
             .some
             .next
         case _: BookingDenied    => s.copy(status = BookingStatus.Denied).some.next
         case _: BookingCancelled => s.copy(status = BookingStatus.Canceled).some.next
         case _: BookingExpired   => s.copy(status = BookingStatus.Canceled).some.next
-        case _: BookingPaid      => s.some.next
-        case _: BookingSettled   => s.copy(status = BookingStatus.Settled).some.next
+        case _: BookingPaid      => s.copy(expiresAt = None).some.next
+        case _: BookingSettled   => s.copy(status = BookingStatus.Settled, expiresAt = None).some.next
       }
   }
 }

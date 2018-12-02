@@ -11,3 +11,4 @@ case object BookingIsAlreadyCanceled extends BookingCommandRejection
 case object BookingIsAlreadyConfirmed extends BookingCommandRejection
 case object BookingIsAlreadySettled extends BookingCommandRejection
 case object BookingIsDenied extends BookingCommandRejection
+case object TooEarlyToExpire extends BookingCommandRejection

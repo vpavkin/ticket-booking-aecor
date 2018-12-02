@@ -1,9 +1,14 @@
 package ru.pavkin.booking.booking.entity
 
+import java.time.Instant
+
 import boopickle.Default._
 import scodec.Codec
 
 object BookingWireCodecs {
+
+  implicit val instantPickler: boopickle.Pickler[Instant] =
+    boopickle.DefaultBasic.longPickler.xmap(Instant.ofEpochMilli)(_.toEpochMilli)
 
   implicit val rejectionPickler: boopickle.Pickler[BookingCommandRejection] =
     compositePickler[BookingCommandRejection]
