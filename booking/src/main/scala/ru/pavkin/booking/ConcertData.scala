@@ -27,8 +27,8 @@ object ConcertData {
   val prices: Map[Seat, Money] = frontRowPrices ++ backRowPrices
 
   val concertData = Map(
-    ConcertId("A") -> ConcertState(prices, prices.keys.toSet, Map.empty),
-    ConcertId("B") -> ConcertState(prices, prices.keys.toSet, Map.empty)
+    ConcertId("concertA") -> ConcertState(prices, prices.keys.toSet, Map.empty),
+    ConcertId("concertB") -> ConcertState(prices, prices.keys.toSet, Map.empty)
   )
 
 }
