@@ -1,5 +1,8 @@
 package ru.pavkin.booking
 
+import java.time.Instant
+import java.util.concurrent.TimeUnit
+
 import aecor.data.EitherK
 import aecor.runtime.Eventsourced
 import aecor.runtime.akkageneric.GenericAkkaRuntime
@@ -8,7 +11,12 @@ import cats.effect.{ Clock, Effect }
 import cats.implicits._
 import ru.pavkin.booking.booking.booking.Bookings
 import ru.pavkin.booking.common.models.BookingKey
-import ru.pavkin.booking.booking.entity.{ Booking, BookingCommandRejection, EventsourcedBooking }
+import ru.pavkin.booking.booking.entity.{
+  Booking,
+  BookingCommandRejection,
+  EventMetadata,
+  EventsourcedBooking
+}
 import ru.pavkin.booking.booking.entity.BookingWireCodecs._
 
 final class EntityWirings[F[_]: Effect](val bookings: Bookings[F])
@@ -19,10 +27,16 @@ object EntityWirings {
                           postgresWirings: PostgresWirings[F]): F[EntityWirings[F]] = {
     val genericAkkaRuntime = GenericAkkaRuntime(system)
 
+    val generateTimestamp: F[EventMetadata] =
+      clock.realTime(TimeUnit.MILLISECONDS).map(Instant.ofEpochMilli).map(EventMetadata)
+
+    val bookingsBehavior =
+      EventsourcedBooking.behavior[F](clock).enrich[EventMetadata](generateTimestamp)
+
     val bookings: F[Bookings[F]] = genericAkkaRuntime
       .runBehavior[BookingKey, EitherK[Booking, BookingCommandRejection, ?[_]], F](
         EventsourcedBooking.entityName,
-        Eventsourced(EventsourcedBooking.behavior[F](clock), postgresWirings.bookingsJournal)
+        Eventsourced(bookingsBehavior, postgresWirings.bookingsJournal)
       )
       .map(Eventsourced.Entities.fromEitherK(_))
 

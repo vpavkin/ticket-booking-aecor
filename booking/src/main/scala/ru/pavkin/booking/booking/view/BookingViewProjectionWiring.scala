@@ -4,7 +4,7 @@ import aecor.data._
 import aecor.distributedprocessing.DistributedProcessing
 import cats.effect.ConcurrentEffect
 import io.chrisdavenport.log4cats.slf4j.Slf4jLogger
-import ru.pavkin.booking.booking.entity.BookingEvent
+import ru.pavkin.booking.booking.entity.{ BookingEvent, EventMetadata }
 import ru.pavkin.booking.booking.view.BookingViewProjectionWiring.EventSource
 import ru.pavkin.booking.common.models.BookingKey
 import ru.pavkin.booking.common.streaming.Fs2Process
@@ -29,6 +29,7 @@ class BookingViewProjectionWiring[F[_]](
 }
 
 object BookingViewProjectionWiring {
-  type EventSource[F[_]] = fs2.Stream[F, Committable[F, EntityEvent[BookingKey, BookingEvent]]]
+  type EventSource[F[_]] =
+    fs2.Stream[F, Committable[F, EntityEvent[BookingKey, Enriched[EventMetadata, BookingEvent]]]]
 
 }

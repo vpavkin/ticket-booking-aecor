@@ -1,6 +1,6 @@
 package ru.pavkin.booking.booking.view
 
-import aecor.data.{ EntityEvent, Folded }
+import aecor.data.{Enriched, EntityEvent, Folded}
 import Folded.syntax._
 import cats.Functor
 import cats.implicits._
@@ -11,10 +11,10 @@ import ru.pavkin.booking.common.models.BookingStatus
 import ru.pavkin.booking.common.view.Projection
 
 class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
-    extends Projection[F, EntityEvent[BookingKey, BookingEvent], BookingView] {
+    extends Projection[F, EntityEvent[BookingKey, Enriched[EventMetadata, BookingEvent]], BookingView] {
 
   def fetchVersionAndState(
-    event: EntityEvent[BookingKey, BookingEvent]
+    event: EntityEvent[BookingKey, Enriched[EventMetadata, BookingEvent]]
   ): F[(Version, Option[BookingView])] =
     repo
       .get(event.entityKey)
@@ -25,9 +25,9 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
 
   def applyEvent(
     s: Option[BookingView]
-  )(event: EntityEvent[BookingKey, BookingEvent]): Folded[Option[BookingView]] = s match {
+  )(event: EntityEvent[BookingKey, Enriched[EventMetadata, BookingEvent]]): Folded[Option[BookingView]] = s match {
     case None =>
-      event.payload match {
+      event.payload.event match {
         case e: BookingPlaced =>
           Some(
             BookingView(
@@ -46,14 +46,13 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
       }
 
     case Some(s) =>
-      event.payload match {
+      event.payload.event match {
         case _: BookingPlaced => impossible
-        // todo: confirmedAt from metadata
         case BookingConfirmed(tickets, expiresAt) =>
           s.copy(
               tickets = tickets.toList,
               status = BookingStatus.Confirmed,
-              confirmedAt = None,
+              confirmedAt = Some(event.payload.metadata.timestamp),
               expiresAt = expiresAt
             )
             .some

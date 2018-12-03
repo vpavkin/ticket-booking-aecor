@@ -1,5 +1,6 @@
 package ru.pavkin.booking.booking.serialization
 
+import aecor.data.Enriched
 import aecor.journal.postgres.PostgresEventJournal
 import aecor.journal.postgres.PostgresEventJournal.Serializer.TypeHint
 import cats.data.NonEmptyList
@@ -11,7 +12,8 @@ import cats.syntax.either._
 
 import scala.collection.immutable
 
-object BookingEventSerializer extends PostgresEventJournal.Serializer[BookingEvent] {
+object BookingEventSerializer
+    extends PostgresEventJournal.Serializer[Enriched[EventMetadata, BookingEvent]] {
 
   sealed trait Hint extends EnumEntry
   object Hint extends Enum[Hint] {
@@ -27,51 +29,60 @@ object BookingEventSerializer extends PostgresEventJournal.Serializer[BookingEve
 
   import Hint._
 
-  def serialize(a: BookingEvent): (TypeHint, Array[Byte]) = a match {
-    case BookingPlaced(clientId, concertId, seats) =>
-      AA.entryName -> msg.BookingPlaced(clientId, concertId, seats.toList).toByteArray
-    case BookingConfirmed(tickets, expiresAt) =>
-      AB.entryName -> msg.BookingConfirmed(tickets.toList, expiresAt).toByteArray
-    case BookingDenied(reason) =>
-      AC.entryName -> msg.BookingDenied(reason).toByteArray
-    case BookingCancelled(reason) =>
-      AD.entryName -> msg.BookingCancelled(reason).toByteArray
-    case BookingExpired() =>
-      AE.entryName -> msg.BookingExpired().toByteArray
-    case BookingPaid(paymentId) =>
-      AF.entryName -> msg.BookingPaid(paymentId).toByteArray
-    case BookingSettled() =>
-      AG.entryName -> msg.BookingSettled().toByteArray
+  def serialize(a: Enriched[EventMetadata, BookingEvent]): (TypeHint, Array[Byte]) = a match {
+    case Enriched(m, BookingPlaced(clientId, concertId, seats)) =>
+      AA.entryName -> msg.BookingPlaced(clientId, concertId, seats.toList, m.timestamp).toByteArray
+    case Enriched(m, BookingConfirmed(tickets, expiresAt)) =>
+      AB.entryName -> msg.BookingConfirmed(tickets.toList, expiresAt, m.timestamp).toByteArray
+    case Enriched(m, BookingDenied(reason)) =>
+      AC.entryName -> msg.BookingDenied(reason, m.timestamp).toByteArray
+    case Enriched(m, BookingCancelled(reason)) =>
+      AD.entryName -> msg.BookingCancelled(reason, m.timestamp).toByteArray
+    case Enriched(m, BookingExpired()) =>
+      AE.entryName -> msg.BookingExpired(m.timestamp).toByteArray
+    case Enriched(m, BookingPaid(paymentId)) =>
+      AF.entryName -> msg.BookingPaid(paymentId, m.timestamp).toByteArray
+    case Enriched(m, BookingSettled()) =>
+      AG.entryName -> msg.BookingSettled(m.timestamp).toByteArray
   }
 
-  def deserialize(typeHint: TypeHint, bytes: Array[Byte]): Either[Throwable, BookingEvent] =
+  def deserialize(typeHint: TypeHint,
+                  bytes: Array[Byte]): Either[Throwable, Enriched[EventMetadata, BookingEvent]] =
     Either.catchNonFatal(Hint.withName(typeHint) match {
 
       case Hint.AA =>
         val raw = msg.BookingPlaced.parseFrom(bytes)
-        BookingPlaced(raw.clientId, raw.concertId, NonEmptyList.fromListUnsafe(raw.seats.toList))
+        Enriched(
+          EventMetadata(raw.timestamp),
+          BookingPlaced(raw.clientId, raw.concertId, NonEmptyList.fromListUnsafe(raw.seats.toList))
+        )
 
       case Hint.AB =>
         val raw = msg.BookingConfirmed.parseFrom(bytes)
-        BookingConfirmed(NonEmptyList.fromListUnsafe(raw.tickets.toList), raw.expiresAt)
+        Enriched(
+          EventMetadata(raw.timestamp),
+          BookingConfirmed(NonEmptyList.fromListUnsafe(raw.tickets.toList), raw.expiresAt)
+        )
 
       case Hint.AC =>
         val raw = msg.BookingDenied.parseFrom(bytes)
-        BookingDenied(raw.reason)
+        Enriched(EventMetadata(raw.timestamp), BookingDenied(raw.reason))
 
       case Hint.AD =>
         val raw = msg.BookingCancelled.parseFrom(bytes)
-        BookingCancelled(raw.reason)
+        Enriched(EventMetadata(raw.timestamp), BookingCancelled(raw.reason))
 
       case Hint.AE =>
-        BookingExpired()
+        val raw = msg.BookingExpired.parseFrom(bytes)
+        Enriched(EventMetadata(raw.timestamp), BookingExpired())
 
       case Hint.AF =>
         val raw = msg.BookingPaid.parseFrom(bytes)
-        BookingPaid(raw.paymentId)
+        Enriched(EventMetadata(raw.timestamp), BookingPaid(raw.paymentId))
 
       case Hint.AG =>
-        BookingSettled()
+        val raw = msg.BookingSettled.parseFrom(bytes)
+        Enriched(EventMetadata(raw.timestamp), BookingSettled())
 
     })
 }
