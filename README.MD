@@ -1,6 +1,6 @@
 # Eventsourced ticket bookings with Aecor
 
-This is a sample application for the "Aecor - Purely functional event sourcing in Scala" post series.
+This is a sample application for the ["Aecor - Purely functional event sourcing in Scala"](https://pavkin.ru/aecor-intro/) post series.
 
 ### Prerequisites
 
