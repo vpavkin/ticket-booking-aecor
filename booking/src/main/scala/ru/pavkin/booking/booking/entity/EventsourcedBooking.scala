@@ -5,10 +5,10 @@ import java.util.concurrent.TimeUnit
 
 import aecor.MonadActionLiftReject
 import aecor.data._
-import aecor.encoding.{ KeyDecoder, KeyEncoder }
+import aecor.encoding.{KeyDecoder, KeyEncoder}
 import cats.Monad
 import cats.data.EitherT._
-import cats.data.{ EitherT, NonEmptyList, OptionT }
+import cats.data.{NonEmptyList, OptionT}
 import cats.effect.Clock
 import cats.syntax.all._
 import ru.pavkin.booking.common.models.BookingStatus._
@@ -99,9 +99,7 @@ object EventsourcedBooking {
   ], F, Option[BookingState], BookingEvent] =
     EventsourcedBehavior
       .optionalRejectable(
-        new EventsourcedBooking[F, EitherT[ActionT[F, Option[BookingState], BookingEvent, ?],
-                                           BookingCommandRejection,
-                                           ?]](clock),
+        new EventsourcedBooking(clock),
         BookingState.init,
         _.handleEvent(_)
       )
