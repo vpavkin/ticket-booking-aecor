@@ -7,7 +7,7 @@ import aecor.data.EitherK
 import aecor.runtime.Eventsourced
 import aecor.runtime.akkageneric.GenericAkkaRuntime
 import akka.actor.ActorSystem
-import cats.effect.{ Clock, Effect }
+import cats.effect._
 import cats.implicits._
 import ru.pavkin.booking.booking.booking.Bookings
 import ru.pavkin.booking.common.models.BookingKey
@@ -19,19 +19,26 @@ import ru.pavkin.booking.booking.entity.{
 }
 import ru.pavkin.booking.booking.entity.BookingWireCodecs._
 
-final class EntityWirings[F[_]: Effect](val bookings: Bookings[F])
+import scala.concurrent.duration._
+import ru.pavkin.common.TimedOutBehaviour
+
+final class EntityWirings[F[_]](val bookings: Bookings[F])
 
 object EntityWirings {
-  def apply[F[_]: Effect](system: ActorSystem,
-                          clock: Clock[F],
-                          postgresWirings: PostgresWirings[F]): F[EntityWirings[F]] = {
+  def apply[F[_]: ConcurrentEffect: Timer](
+    system: ActorSystem,
+    clock: Clock[F],
+    postgresWirings: PostgresWirings[F]
+  ): F[EntityWirings[F]] = {
     val genericAkkaRuntime = GenericAkkaRuntime(system)
 
     val generateTimestamp: F[EventMetadata] =
       clock.realTime(TimeUnit.MILLISECONDS).map(Instant.ofEpochMilli).map(EventMetadata)
 
     val bookingsBehavior =
-      EventsourcedBooking.behavior[F](clock).enrich[EventMetadata](generateTimestamp)
+      TimedOutBehaviour(
+        EventsourcedBooking.behavior[F](clock).enrich[EventMetadata](generateTimestamp)
+      )(2.seconds)
 
     val bookings: F[Bookings[F]] = genericAkkaRuntime
       .runBehavior[BookingKey, EitherK[Booking, BookingCommandRejection, ?[_]], F](
