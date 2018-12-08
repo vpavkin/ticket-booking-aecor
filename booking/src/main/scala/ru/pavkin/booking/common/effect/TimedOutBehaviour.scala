@@ -1,5 +1,4 @@
-package ru.pavkin.common
-
+package ru.pavkin.booking.common.effect
 import aecor.data.EventsourcedBehavior
 import cats.effect.{Concurrent, Timer}
 import cats.tagless.FunctorK

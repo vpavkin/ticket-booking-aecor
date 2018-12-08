@@ -1,5 +1,4 @@
-package ru.pavkin.common
-
+package ru.pavkin.booking.common.effect
 import cats.effect.{Concurrent, Timer}
 import cats.~>
 

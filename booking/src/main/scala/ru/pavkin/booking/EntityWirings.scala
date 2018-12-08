@@ -11,17 +11,11 @@ import cats.effect._
 import cats.implicits._
 import ru.pavkin.booking.booking.booking.Bookings
 import ru.pavkin.booking.common.models.BookingKey
-import ru.pavkin.booking.booking.entity.{
-  Booking,
-  BookingCommandRejection,
-  EventMetadata,
-  EventsourcedBooking
-}
+import ru.pavkin.booking.booking.entity.{Booking, BookingCommandRejection, EventMetadata, EventsourcedBooking}
 import ru.pavkin.booking.booking.entity.BookingWireCodecs._
+import ru.pavkin.booking.common.effect.TimedOutBehaviour
 
 import scala.concurrent.duration._
-import ru.pavkin.common.TimedOutBehaviour
-
 final class EntityWirings[F[_]](val bookings: Bookings[F])
 
 object EntityWirings {
