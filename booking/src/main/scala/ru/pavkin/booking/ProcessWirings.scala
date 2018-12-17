@@ -29,13 +29,16 @@ final class ProcessWirings[F[_]: Timer: ConcurrentEffect: Par](system: ActorSyst
 
   val distributedProcessing = DistributedProcessing(system)
 
+  val bookingQueries =
+    bookingsJournal.queries(journals.booking.pollingInterval).withOffsetStore(offsetStore)
+
   def bookingEvents(
     eventTag: EventTag,
     consumerId: ConsumerId
   ): fs2.Stream[F, Committable[F,
                                (Offset,
                                 EntityEvent[BookingKey, Enriched[EventMetadata, BookingEvent]])]] =
-    fs2.Stream.force(bookingsJournal.withOffsetStore(offsetStore).eventsByTag(eventTag, consumerId))
+    fs2.Stream.force(bookingQueries.eventsByTag(eventTag, consumerId))
 
   val bookingViewProjection = new BookingViewProjectionWiring(
     bookingViewRepo,

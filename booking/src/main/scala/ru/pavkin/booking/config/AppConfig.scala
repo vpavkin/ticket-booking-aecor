@@ -1,6 +1,6 @@
 package ru.pavkin.booking.config
 
-import aecor.journal.postgres.PostgresEventJournal
+import scala.concurrent.duration.FiniteDuration
 
 final case class AppConfig(
   httpServer: HttpServer,
@@ -19,4 +19,6 @@ final case class HttpServer(interface: String, port: Int)
 
 final case class ActorSystemName(systemName: String)
 
-final case class PostgresJournals(booking: PostgresEventJournal.Settings)
+final case class PostgresJournals(booking: PostgresEventJournalSettings)
+
+final case class PostgresEventJournalSettings(tableName: String, pollingInterval: FiniteDuration)
