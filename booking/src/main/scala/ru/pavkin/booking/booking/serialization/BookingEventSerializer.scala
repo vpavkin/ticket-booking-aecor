@@ -38,11 +38,11 @@ object BookingEventSerializer
       AC.entryName -> msg.BookingDenied(reason, m.timestamp).toByteArray
     case Enriched(m, BookingCancelled(reason)) =>
       AD.entryName -> msg.BookingCancelled(reason, m.timestamp).toByteArray
-    case Enriched(m, BookingExpired()) =>
+    case Enriched(m, BookingExpired) =>
       AE.entryName -> msg.BookingExpired(m.timestamp).toByteArray
     case Enriched(m, BookingPaid(paymentId)) =>
       AF.entryName -> msg.BookingPaid(paymentId, m.timestamp).toByteArray
-    case Enriched(m, BookingSettled()) =>
+    case Enriched(m, BookingSettled) =>
       AG.entryName -> msg.BookingSettled(m.timestamp).toByteArray
   }
 
@@ -74,7 +74,7 @@ object BookingEventSerializer
 
       case Hint.AE =>
         val raw = msg.BookingExpired.parseFrom(bytes)
-        Enriched(EventMetadata(raw.timestamp), BookingExpired())
+        Enriched(EventMetadata(raw.timestamp), BookingExpired)
 
       case Hint.AF =>
         val raw = msg.BookingPaid.parseFrom(bytes)
@@ -82,7 +82,7 @@ object BookingEventSerializer
 
       case Hint.AG =>
         val raw = msg.BookingSettled.parseFrom(bytes)
-        Enriched(EventMetadata(raw.timestamp), BookingSettled())
+        Enriched(EventMetadata(raw.timestamp), BookingSettled)
 
     })
 }

@@ -35,7 +35,7 @@ class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
     status.flatMap {
       case AwaitingConfirmation =>
         append(BookingConfirmed(tickets, expiresAt)) >>
-          whenA(tickets.foldMap(_.price).amount <= 0)(append(BookingSettled()))
+          whenA(tickets.foldMap(_.price).amount <= 0)(append(BookingSettled))
 
       case Confirmed | Settled => ignore
       case Denied              => reject(BookingIsDenied)
@@ -63,7 +63,7 @@ class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
     status.flatMap {
       case AwaitingConfirmation        => reject(BookingIsNotConfirmed)
       case Canceled | Denied | Settled => reject(BookingIsAlreadySettled)
-      case Confirmed                   => append(BookingPaid(paymentId), BookingSettled())
+      case Confirmed                   => append(BookingPaid(paymentId), BookingSettled)
     }
 
   def expire: I[Unit] =
@@ -71,7 +71,7 @@ class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
       now <- liftF(clock.realTime(TimeUnit.MILLISECONDS)).map(Instant.ofEpochMilli)
       state <- OptionT(read).getOrElseF(reject(BookingNotFound))
       _ <- state.status match {
-            case Confirmed if state.expiresAt.exists(now.isAfter) => append(BookingExpired())
+            case Confirmed if state.expiresAt.exists(now.isAfter) => append(BookingExpired)
             case Confirmed                                        => reject(TooEarlyToExpire)
             case Canceled | Denied                                => ignore
             case Settled                                          => reject(BookingIsAlreadySettled)

@@ -20,9 +20,9 @@ case class BookingState(clientId: ClientId,
     case e: BookingConfirmed =>
       copy(tickets = Some(e.tickets), expiresAt = e.expiresAt, status = BookingStatus.Confirmed).next
     case _: BookingDenied | _: BookingCancelled => copy(status = BookingStatus.Canceled).next
-    case _: BookingExpired                      => copy(status = BookingStatus.Canceled).next
+    case BookingExpired                         => copy(status = BookingStatus.Canceled).next
     case e: BookingPaid                         => copy(paymentId = Some(e.paymentId)).next
-    case _: BookingSettled                      => copy(status = BookingStatus.Settled).next
+    case BookingSettled                         => copy(status = BookingStatus.Settled).next
   }
 
 }

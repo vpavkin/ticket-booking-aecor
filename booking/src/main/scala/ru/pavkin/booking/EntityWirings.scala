@@ -5,13 +5,18 @@ import java.util.concurrent.TimeUnit
 
 import aecor.data.EitherK
 import aecor.runtime.Eventsourced
-import aecor.runtime.akkageneric.GenericAkkaRuntime
+import aecor.runtime.akkageneric.{ GenericAkkaRuntime, GenericAkkaRuntimeSettings }
 import akka.actor.ActorSystem
 import cats.effect._
 import cats.implicits._
 import ru.pavkin.booking.booking.booking.Bookings
 import ru.pavkin.booking.common.models.BookingKey
-import ru.pavkin.booking.booking.entity.{Booking, BookingCommandRejection, EventMetadata, EventsourcedBooking}
+import ru.pavkin.booking.booking.entity.{
+  Booking,
+  BookingCommandRejection,
+  EventMetadata,
+  EventsourcedBooking
+}
 import ru.pavkin.booking.booking.entity.BookingWireCodecs._
 import ru.pavkin.booking.common.effect.TimedOutBehaviour
 
@@ -34,10 +39,18 @@ object EntityWirings {
         EventsourcedBooking.behavior[F](clock).enrich[EventMetadata](generateTimestamp)
       )(2.seconds)
 
+    val createBehavior: BookingKey => F[EitherK[Booking, BookingCommandRejection, F]] =
+      Eventsourced(
+        entityBehavior = bookingsBehavior,
+        journal = postgresWirings.bookingsJournal,
+        snapshotting = None
+      )
+
     val bookings: F[Bookings[F]] = genericAkkaRuntime
-      .runBehavior[BookingKey, EitherK[Booking, BookingCommandRejection, ?[_]], F](
-        EventsourcedBooking.entityName,
-        Eventsourced(bookingsBehavior, postgresWirings.bookingsJournal)
+      .runBehavior(
+        typeName = EventsourcedBooking.entityName,
+        createBehavior = createBehavior,
+        settings = GenericAkkaRuntimeSettings.default(system)
       )
       .map(Eventsourced.Entities.fromEitherK(_))
 

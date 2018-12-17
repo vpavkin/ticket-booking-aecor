@@ -33,7 +33,7 @@ class EventsourcedBookingWithoutExpiration[F[_]](
     status.flatMap {
       case AwaitingConfirmation =>
         append(BookingConfirmed(tickets, null)) >>
-          whenA(tickets.foldMap(_.price).amount <= 0)(append(BookingSettled()))
+          whenA(tickets.foldMap(_.price).amount <= 0)(append(BookingSettled))
 
       case Confirmed | Settled => ignore
       case Denied              => reject(BookingIsDenied)
@@ -63,7 +63,7 @@ class EventsourcedBookingWithoutExpiration[F[_]](
     status.flatMap {
       case AwaitingConfirmation        => reject(BookingIsNotConfirmed)
       case Canceled | Denied | Settled => reject(BookingIsAlreadySettled)
-      case Confirmed                   => append(BookingPaid(paymentId)) >> append(BookingSettled())
+      case Confirmed                   => append(BookingPaid(paymentId)) >> append(BookingSettled)
     }
 
   def status: F[BookingStatus] = read.flatMap {

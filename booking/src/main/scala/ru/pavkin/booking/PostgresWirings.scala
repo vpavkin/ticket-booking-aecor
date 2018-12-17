@@ -8,13 +8,13 @@ import cats.implicits._
 import cats.temp.par._
 import doobie.implicits._
 import doobie.util.transactor.Transactor
+import ru.pavkin.booking.booking.entity.EventsourcedBooking._
 import ru.pavkin.booking.booking.entity.{BookingEvent, EventMetadata, EventsourcedBooking}
-import ru.pavkin.booking.common.models.BookingKey
 import ru.pavkin.booking.booking.serialization.BookingEventSerializer
 import ru.pavkin.booking.booking.view.PostgresBookingViewRepository
+import ru.pavkin.booking.common.models.BookingKey
 import ru.pavkin.booking.common.postgres.PostgresTransactor
 import ru.pavkin.booking.config.{AppConfig, PostgresJournals}
-import EventsourcedBooking._
 
 final class PostgresWirings[F[_]: Async: Timer: Par] private (val transactor: Transactor[F],
                                                               journals: PostgresJournals) {

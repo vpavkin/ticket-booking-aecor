@@ -13,6 +13,6 @@ case class BookingConfirmed(tickets: NonEmptyList[Ticket], expiresAt: Option[Ins
     extends BookingEvent
 case class BookingDenied(reason: String) extends BookingEvent
 case class BookingCancelled(reason: String) extends BookingEvent
-case class BookingExpired() extends BookingEvent
+case object BookingExpired extends BookingEvent
 case class BookingPaid(paymentId: PaymentId) extends BookingEvent
-case class BookingSettled() extends BookingEvent
+case object BookingSettled extends BookingEvent
