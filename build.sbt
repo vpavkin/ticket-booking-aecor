@@ -2,7 +2,7 @@ import sbt.Keys.{parallelExecution, scalacOptions}
 import sbt._
 import sbt.Keys._
 
-lazy val aecorVersion = "0.19.0-SNAPSHOT"
+lazy val aecorVersion = "0.18.0"
 lazy val aecorPostgresVersion = "0.2.1"
 lazy val akkaVersion = "2.5.18"
 lazy val boopickleVerison = "1.3.0"

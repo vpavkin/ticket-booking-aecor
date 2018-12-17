@@ -59,9 +59,9 @@ class BookingViewProjection[F[_]: Functor](repo: BookingViewRepository[F])
             .next
         case _: BookingDenied    => s.copy(status = BookingStatus.Denied).some.next
         case _: BookingCancelled => s.copy(status = BookingStatus.Canceled).some.next
-        case _: BookingExpired   => s.copy(status = BookingStatus.Canceled).some.next
+        case BookingExpired   => s.copy(status = BookingStatus.Canceled).some.next
         case _: BookingPaid      => s.copy(expiresAt = None).some.next
-        case _: BookingSettled   => s.copy(status = BookingStatus.Settled, expiresAt = None).some.next
+        case BookingSettled   => s.copy(status = BookingStatus.Settled, expiresAt = None).some.next
       }
   }
 }
