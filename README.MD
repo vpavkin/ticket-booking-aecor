@@ -9,8 +9,6 @@ Infrastructure for the app includes postgres and kafka, so you'll need either
 * docker-compose (recommended)
 * or have both postgres and kafka installed locally.
 
-Also, current version of this app is **build on a snapshot version of Aecor**. It's not published yet, so you'll need to publish [aecor](http://aecor.io) locally from sources for ticket-booking to build.
-
 ### Running (with docker-compose)
 
 1. Launch infrastructure using compose (in the project folder):
