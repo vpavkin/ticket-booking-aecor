@@ -5,10 +5,10 @@ import java.util.concurrent.TimeUnit
 
 import aecor.MonadActionLiftReject
 import aecor.data._
-import aecor.encoding.{KeyDecoder, KeyEncoder}
+import aecor.encoding.{ KeyDecoder, KeyEncoder }
 import cats.Monad
 import cats.data.EitherT._
-import cats.data.{NonEmptyList, OptionT}
+import cats.data.{ NonEmptyList, OptionT }
 import cats.effect.Clock
 import cats.syntax.all._
 import ru.pavkin.booking.common.models.BookingStatus._
@@ -20,7 +20,10 @@ class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
 
   import I._
 
-  val ignore: I[Unit] = unit
+  val ignore: I[Unit] = I.unit
+
+  def currentTime: I[Instant] =
+    liftF(clock.realTime(TimeUnit.MILLISECONDS)).map(Instant.ofEpochMilli)
 
   def place(client: ClientId, concert: ConcertId, seats: NonEmptyList[Seat]): I[Unit] =
     read.flatMap {
@@ -68,14 +71,15 @@ class EventsourcedBooking[F[_], I[_]](clock: Clock[F])(
 
   def expire: I[Unit] =
     for {
-      now <- liftF(clock.realTime(TimeUnit.MILLISECONDS)).map(Instant.ofEpochMilli)
+      now <- currentTime
       state <- OptionT(read).getOrElseF(reject(BookingNotFound))
       _ <- state.status match {
-            case Confirmed if state.expiresAt.exists(now.isAfter) => append(BookingExpired)
-            case Confirmed                                        => reject(TooEarlyToExpire)
-            case Canceled | Denied                                => ignore
-            case Settled                                          => reject(BookingIsAlreadySettled)
-            case AwaitingConfirmation                             => reject(BookingIsNotConfirmed)
+            case Confirmed
+              if state.expiresAt.exists(now.isAfter) => append(BookingExpired)
+            case Confirmed                           => reject(TooEarlyToExpire)
+            case Canceled | Denied                   => ignore
+            case Settled                             => reject(BookingIsAlreadySettled)
+            case AwaitingConfirmation                => reject(BookingIsNotConfirmed)
           }
     } yield ()
 
@@ -98,11 +102,7 @@ object EventsourcedBooking {
     ?[_]
   ], F, Option[BookingState], BookingEvent] =
     EventsourcedBehavior
-      .optionalRejectable(
-        new EventsourcedBooking(clock),
-        BookingState.init,
-        _.handleEvent(_)
-      )
+      .optionalRejectable(new EventsourcedBooking(clock), BookingState.init, _.handleEvent(_))
 
   val entityName: String = "Booking"
   val entityTag: EventTag = EventTag(entityName)

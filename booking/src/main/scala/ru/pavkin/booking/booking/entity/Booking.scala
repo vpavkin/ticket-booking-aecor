@@ -19,9 +19,7 @@ trait Booking[F[_]] {
   def cancel(reason: String): F[Unit]
   def receivePayment(paymentId: PaymentId): F[Unit]
   def expire: F[Unit]
-
   def status: F[BookingStatus]
-  def tickets: F[Option[NonEmptyList[Ticket]]]
 }
 
 object Booking
