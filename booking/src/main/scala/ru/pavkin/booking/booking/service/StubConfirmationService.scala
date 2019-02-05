@@ -9,25 +9,25 @@ import cats.data.NonEmptyList
 import cats.effect.{ Clock, Sync }
 import cats.effect.concurrent.Ref
 import cats.implicits._
-import ru.pavkin.booking.booking.service.BookingConfirmationService._
+import ru.pavkin.booking.booking.service.TicketReservationService._
 import ru.pavkin.booking.booking.service.StubConfirmationService.ConcertState
 import ru.pavkin.booking.common.models._
 
 class StubConfirmationService[F[_]: Monad](clock: Clock[F],
                                            state: Ref[F, Map[ConcertId, ConcertState]])
-    extends BookingConfirmationService[F] {
+    extends TicketReservationService[F] {
 
   val expireAfter: Duration = Duration.of(6, ChronoUnit.HOURS)
 
-  def book(bookingId: BookingKey,
+  def reserve(bookingId: BookingKey,
            concertId: ConcertId,
-           seats: NonEmptyList[Seat]): F[Either[ConfirmationFailure, Confirmation]] =
+           seats: NonEmptyList[Seat]): F[Either[ReservationFailure, Reservation]] =
     clock
       .realTime(TimeUnit.MILLISECONDS)
       .map(Instant.ofEpochMilli)
       .flatMap(
         now =>
-          state.modify[Either[ConfirmationFailure, Confirmation]](
+          state.modify[Either[ReservationFailure, Reservation]](
             concerts =>
               concerts.get(concertId) match {
                 case None => concerts -> Left(UnknownSeats)
@@ -37,7 +37,7 @@ class StubConfirmationService[F[_]: Monad](clock: Clock[F],
                     .fold(e => concerts -> Left(e), {
                       case (c, t) =>
                         concerts.updated(concertId, c) -> Right(
-                          Confirmation(t, Some(now.plus(expireAfter)))
+                          Reservation(t, Some(now.plus(expireAfter)))
                         )
                     })
 
@@ -73,7 +73,7 @@ object StubConfirmationService {
     def book(
       bookingId: BookingKey,
       seats: NonEmptyList[Seat]
-    ): Either[ConfirmationFailure, (ConcertState, NonEmptyList[Ticket])] =
+    ): Either[ReservationFailure, (ConcertState, NonEmptyList[Ticket])] =
       if (bookedSeats.contains(bookingId)) Left(SeatsAlreadyBooked)
       else if (!seats.forall(availableSeats)) Left(SeatsAlreadyBooked)
       else if (!seats.forall(prices.contains)) Left(UnknownSeats)
