@@ -17,7 +17,17 @@ Infrastructure for the app includes postgres and kafka, so you'll need either
 docker-compose up -d
 ```
 
-2. Run the app
+2. If you are using `docker-compose` on macOS or Windows you should also forward all ports used in `docker-compose.yml`
+file (to be able to reach all Docker containers via localhost address). You can do this via `docker-machine` CLI or by
+a script such as [docker-machine-port-forwarder](https://github.com/johanhaleby/docker-machine-port-forwarder):
+
+```
+pf 5432
+pf 2181
+pf 9092
+```
+
+3. Run the app
 
 ```
 sbt booking/run
