@@ -18,7 +18,7 @@ lazy val pureConfigVersion = "0.10.0"
 lazy val scalaCheckVersion = "1.14.0"
 lazy val scalaTestVersion = "3.0.5"
 lazy val shapelessVersion = "2.3.3"
-lazy val http4sVersion = "0.20.0-M3"
+lazy val http4sVersion = "0.20.6"
 lazy val enumeratumVersion = "1.5.13"
 
 lazy val simulacrum = "com.github.mpilquist" %% "simulacrum" % "0.12.0"
