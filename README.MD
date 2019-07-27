@@ -70,7 +70,7 @@ curl --request GET \
 Payments are received from another service via PaymentReceived topic, so to emulate a payment we'll need to produce a message:
 
 ```bash
-docker exec -it ticket-booking_kafka_1 /bin/bash
+docker exec -it ticket-booking-aecor_kafka_1 /bin/bash
 
 $KAFKA_HOME/bin/kafka-console-producer.sh --broker-list localhost:9092 --topic PaymentReceived
 
