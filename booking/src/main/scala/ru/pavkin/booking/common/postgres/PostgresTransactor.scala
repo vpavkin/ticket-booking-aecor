@@ -1,7 +1,6 @@
 package ru.pavkin.booking.common.postgres
 
 import cats.effect.{Async, ContextShift, Resource}
-import cats.syntax.functor._
 import doobie.hikari.HikariTransactor
 import doobie.util.ExecutionContexts
 import ru.pavkin.booking.config.PostgresConfig

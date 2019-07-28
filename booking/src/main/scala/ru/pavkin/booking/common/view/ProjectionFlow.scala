@@ -12,7 +12,7 @@ object ProjectionFlow {
 
   def apply[F[_], K, E, S](log: Logger[F],
                            aggregateProjection: Projection[F, EntityEvent[K, E], S],
-  )(implicit F: Sync[F]): fs2.Sink[F, Committable[F, EntityEvent[K, E]]] = {
+  )(implicit F: Sync[F]): fs2.Pipe[F, Committable[F, EntityEvent[K, E]], Unit] = {
 
     def foldEvent(event: EntityEvent[K, E], state: Option[S]): F[Option[S]] = {
       val newVersion = aggregateProjection.applyEvent(state)(event)
