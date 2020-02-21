@@ -7,6 +7,7 @@ services:
     environment:
       POSTGRES_USER: postgres
       POSTGRES_DB: booking
+      POSTGRES_PASSWORD: postgres
   zookeeper:
     image: wurstmeister/zookeeper
     ports:
